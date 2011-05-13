@@ -152,7 +152,7 @@ class WikiBlame
 		s.warnings=false
 		s.log=false
 
-		versions=s.API("action=query&prop=revisions&titles=#{CGI.escape @article}&rvlimit=500&rvprop=#{@parsed ? '' : 'content|'}timestamp|user|comment|ids&rvdir=newer")
+		versions=s.API("action=query&prop=revisions&titles=#{CGI.escape @article}&rvlimit=500&rvprop=#{CGI.escape "#{@parsed ? '' : 'content|'}timestamp|user|comment|ids"}&rvdir=newer")
 		versions=versions['query']['pages'].values[0]['revisions']
 		versions=versions.map do |r| 
 			Version[

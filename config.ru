@@ -1,2 +1,2 @@
-require 'diff-camping'
+require 'wikiblame'
 run WikiBlameCamping
