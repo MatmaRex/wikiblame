@@ -3,6 +3,10 @@ require 'sunflower'
 require 'camping'
 
 
+def Sunflower.path
+	'./sunflower-userdata'
+end
+
 
 
 Camping.goes :WikiBlameCamping
