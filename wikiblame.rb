@@ -1,3 +1,16 @@
+# WikiBlame v 0.2 by Matma Rex
+# matma.rex@gmail.com
+# released under CC-BY-SA 3.0
+
+
+# some code in this file is very old. beware. 
+# namely, StringWithMarks class will leave its mark on your mind.
+# forever.
+
+
+# this is a nasty fix. some versions of Markaby want to undef these methods, 
+# and some versions of Builder do not define them,
+# thus causing an exception. 
 require 'builder'
 class Builder::BlankSlate
 	unless method_defined? :to_s; def to_s; end; end
@@ -5,16 +18,16 @@ class Builder::BlankSlate
 	unless method_defined? :==; def ==; end; end
 end
 
+
 require './algo-diff.rb'
 require 'sunflower'
 require 'camping'
 
 
+# use local userdata file
 def Sunflower.path
 	'./sunflower-userdata'
 end
-
-
 
 
 Camping.goes :WikiBlameCamping
@@ -25,6 +38,21 @@ module WikiBlameCamping
 			def get
 				@title = "Wiki blame"
 				render :index
+			end
+		end
+		
+		class SourceX
+			def get file
+				@headers['content-type']='text/plain'
+				
+				case file
+				when 'wikiblame.rb'
+					@source1||=File.read './wikiblame.rb'
+				when 'algo-diff.rb'
+					@source2||=File.read './algo-diff.rb'
+				else
+					'Nope.'
+				end
 			end
 		end
 		
@@ -96,6 +124,8 @@ module WikiBlameCamping
 				end
 				
 				input type:'submit'
+				
+				p{"WikiBlame v 0.2 by Matma Rex (matma.rex@gmail.com). Released under CC-BY-SA 3.0. Read the source: #{a 'main file', :href=>R(SourceX, 'wikiblame.rb')}, #{a 'algorithm file', :href=>R(SourceX, 'algo-diff.rb')}."}
 			end
 		end
 		
