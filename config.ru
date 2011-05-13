@@ -1,2 +1,2 @@
-require 'wikiblame'
+require 'wikiblame.rb'
 run WikiBlameCamping
