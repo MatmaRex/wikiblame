@@ -1,3 +1,10 @@
+require 'builder'
+class Builder::BlankSlate
+	unless method_defined? :to_s; def to_s; end; end
+	unless method_defined? :inspect; def inspect; end; end
+	unless method_defined? :==; def ==; end; end
+end
+
 require './algo-diff.rb'
 require 'sunflower'
 require 'camping'
@@ -7,11 +14,7 @@ def Sunflower.path
 	'./sunflower-userdata'
 end
 
-class Builder::BlankSlate
-	unless method_defined? :to_s; def to_s; end; end
-	unless method_defined? :inspect; def inspect; end; end
-	unless method_defined? :==; def ==; end; end
-end
+
 
 
 Camping.goes :WikiBlameCamping
