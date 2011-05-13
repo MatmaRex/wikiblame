@@ -1,4 +1,4 @@
-require 'algo-diff.rb'
+require './algo-diff.rb'
 require 'sunflower'
 require 'camping'
 
