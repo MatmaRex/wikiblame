@@ -24,12 +24,6 @@ require 'sunflower'
 require 'camping'
 
 
-# use local userdata file
-def Sunflower.path
-	'./sunflower-userdata'
-end
-
-
 Camping.goes :WikiBlameCamping
 
 module WikiBlameCamping
