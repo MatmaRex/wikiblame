@@ -65,9 +65,10 @@ module WikiBlameCamping
 				revertshard = (@request['revertshard'] and @request['revertshard']!='') ? true : false
 				pilcrow = (@request['pilcrow'] and @request['pilcrow']!='') ? true : false
 				parsed = (@request['parsed'] and @request['parsed']!='') ? true : false
+				colorusers = (@request['colorusers'] and @request['colorusers']!='') ? true : false
 				
 				
-				blame = WikiBlame.new lang, article, reverts, collapse, revertshard, pilcrow, parsed
+				blame = WikiBlame.new lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers
 				
 				@parsed = parsed
 				@title = "#{article} - Wiki blame"
@@ -118,7 +119,11 @@ module WikiBlameCamping
 				ul do
 					li{ _checkbox 'Exclude reverts? ', :reverts, true }
 					li{ _checkbox 'Exclude reverts *hard*? (Compare every two revisions) ', :revertshard, true }
-					li{ _checkbox 'Collapse repetitive? ', :collapse, true }
+					li{ _checkbox 'Collapse subsequent revisions by the same user? ', :collapse, true }
+					li{ _checkbox 'Assign unique colors to users instead of revisions? ', :colorusers, false }
+				end
+				
+				ul do
 					li{ _checkbox 'Show parsed HTML instead of wikitext? (Warning: may break stuff) ', :parsed, false }
 					li{ _checkbox 'Insert pilcrow at newlines? ', :pilcrow, false }
 				end
@@ -166,23 +171,29 @@ end
 # end
 
 class WikiBlame
-	def initialize lang, article, reverts, collapse, revertshard, pilcrow, parsed
-		@lang, @article, @reverts, @collapse, @revertshard, @pilcrow, @parsed = lang, article, reverts, collapse, revertshard, pilcrow, parsed
+	def initialize lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers
+		@lang, @article, @reverts, @collapse, @revertshard, @pilcrow, @parsed, @colorusers = lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers
 	end
 	
 	def get_colors n
-		# generate mostly unique colors, based on their hue; allow 3 shades for each hue
-		hues = ((n-1).to_f / 3).ceil # make sure there is just enough; n-1, since we later insert white
-		colors = (1..hues).map{|i| (i.to_f/hues*360).floor} # calculate the hues; from 1, so we do not "wrap over" the wheel
+		if n<=9
+			# generate mostly unique colors, based on their hue; 1 shade for each hue
+			
+			hues = n
+			colors = (1..hues).map{|i| (i.to_f/hues*360).floor} # calculate the hues; from 1, so we do not "wrap over" the wheel
 
-		colors = colors.map{|c| [[c, 35], [c, 55], [c, 75]]}.flatten.each_slice(2).to_a # convert each hue to three hue-lightness pairs
-		colors = colors.map{|hue, lightness| "hsl(#{hue}, 100%, #{lightness}%)"}
-		
-		#colors.shuffle! # so there is no visible progression
+			colors = colors.map{|hue| "hsl(#{hue}, 100%, 35%)"}
+		else
+			# generate mostly unique colors, based on their hue; allow 3 shades for each hue
+			
+			hues = (n.to_f / 3).ceil # make sure there is just enough
+			colors = (1..hues).map{|i| (i.to_f/hues*360).floor} # calculate the hues; from 1, so we do not "wrap over" the wheel
 
-		colors.unshift 'white' # for the base revision
+			colors = colors.map{|c| [[c, 35], [c, 55], [c, 75]]}.flatten.each_slice(2).to_a # convert each hue to three hue-lightness pairs
+			colors = colors.map{|hue, lightness| "hsl(#{hue}, 100%, #{lightness}%)"}
+		end
 		
-		colors
+		colors[0...n]
 	end
 	
 	def html_escape text
@@ -253,15 +264,34 @@ class WikiBlame
 		end
 		
 		
-		colors = get_colors versions.count{|v| !v.revert} # dont count reverts
-		versions.each do |v|
-			if v.revert
-				v.color='grey' # reverts are grey
-			else
-				v.color=colors.shift
+		if @colorusers
+			# each user has unique color
+			userslist = versions.select{|v| !v.revert}.map{|v| v.user}.uniq
+			colors = get_colors userslist.length-1
+			colors.unshift 'white' # for the base revision
+			
+			user_to_color = Hash[ userslist.zip(colors) ]
+
+			versions.each do |v|
+				if v.revert
+					v.color='grey' # reverts are grey
+				else
+					v.color=user_to_color[v.user]
+				end
+			end
+		else
+			# each revision has unique color
+			colors = get_colors(versions.count{|v| !v.revert}-1) # dont count reverts
+			colors.unshift 'white' # for the base revision
+		
+			versions.each do |v|
+				if v.revert
+					v.color='grey' # reverts are grey
+				else
+					v.color=colors.shift
+				end
 			end
 		end
-		
 		
 		
 		str=StringWithMarks.new(versions[0].text)
