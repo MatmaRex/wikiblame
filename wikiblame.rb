@@ -1,11 +1,7 @@
-# WikiBlame v 0.2 by Matma Rex
+# WikiBlame v 0.3 by Matma Rex
 # matma.rex@gmail.com
 # released under CC-BY-SA 3.0
 
-
-# some code in this file is very old. beware. 
-# namely, StringWithMarks class will leave its mark on your mind.
-# forever.
 
 
 # this is a nasty fix. some versions of Markaby want to undef these methods, 
@@ -126,7 +122,7 @@ module WikiBlameCamping
 				
 				input type:'submit'
 				
-				p "WikiBlame v 0.2 by Matma Rex (matma.rex@gmail.com). Released under CC-BY-SA 3.0."
+				p "WikiBlame v 0.3 by Matma Rex (matma.rex@gmail.com). Released under CC-BY-SA 3.0."
 				p{
 					"Read the source: 
 					#{a 'main file',      :href=>R(SourceX, 'wikiblame.rb')}, 
@@ -365,11 +361,6 @@ end
 
 class Object
 	attr_accessor :delete_me
-end
-
-class NilClass
-	def each
-	end
 end
 
 class StringWithMarks < String
