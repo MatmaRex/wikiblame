@@ -40,6 +40,8 @@ module WikiBlameCamping
 				@headers['content-type']='text/plain'
 				
 				case file
+				when 'README'
+					@source1||=File.read './README'
 				when 'wikiblame.rb'
 					@source1||=File.read './wikiblame.rb'
 				when 'algo-diff.rb'
@@ -124,7 +126,14 @@ module WikiBlameCamping
 				
 				input type:'submit'
 				
-				p{"WikiBlame v 0.2 by Matma Rex (matma.rex@gmail.com). Released under CC-BY-SA 3.0. Read the source: #{a 'main file', :href=>R(SourceX, 'wikiblame.rb')}, #{a 'algorithm file', :href=>R(SourceX, 'algo-diff.rb')}."}
+				p "WikiBlame v 0.2 by Matma Rex (matma.rex@gmail.com). Released under CC-BY-SA 3.0."
+				p{
+					"Read the source: 
+					#{a 'main file',      :href=>R(SourceX, 'wikiblame.rb')}, 
+					#{a 'algorithm file', :href=>R(SourceX, 'algo-diff.rb')}, 
+					#{a 'README file',    :href=>R(SourceX, 'README')}."
+				}
+				p{a 'See me on Github!', :href=>'https://github.com/MatmaRex/wikiblame'}
 			end
 		end
 		

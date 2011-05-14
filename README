@@ -1,0 +1,36 @@
+Show who precisely wrote which letter in a Wikipedia article. 
+
+Heroku platform enforces some hard limits, most important one being 30 seconds per request. This renders it useless for longer articles - but it still sort of works for them (locally).
+
+
+
+What I wrote to a friend about it: (in Polish)
+
+Matma Rex, 2011-05-13 19:22:12:
+pozwala zobaczyc, kto dok³adnie napisa³ któr¹ literkê w artykule
+
+na przyklad: http://wikiblame.heroku.com/diff?lang=pl&article=Motorola+DynaTAC&reverts=on&revertshard=on&collapse=on
+od razu widac, ze z mojego oryginalu artykulu zostalo malo co, a glownym autorem jest Ananas96
+
+http://wikiblame.heroku.com/diff?lang=pl&article=Samy+Naceri&reverts=on&revertshard=on&collapse=on
+podobnie - z oryginalu ipka jest malo co, glownym autorem jest Elster, ktory opisal napisanie calego artykulu jako "dropbne merytoryczne"
+widac, ze pare osob kombinowalo z formatowaniem, a boty z interwiki
+
+http://wikiblame.heroku.com/diff?lang=pl&article=Erupcja+wulkanu&reverts=on&revertshard=on&collapse=on
+(to moze sie chwile ³adowac)
+glowny artykul jest taki, jak byl na poczatku, potem ktos dodal tabelke, ktos inny obrazki, pare osob po jednym zdaniu, a boty - interwiki
+
+musze jeszcze pare rzeczy zrobic, zeby to bylo uzyteczne, i wymyslic cos, zeby kolory sie nie zlewaly
+no i dla zbyt dlugich artykulow w ogole nie dziala, ale to jest po prostu limit darmowej platformy ;)
+
+
+
+
+TODO:
+* make it look better
+* link some nice examples
+* caching
+* info about grey=reverts, more info about options
+* collapsing grey revisions together with regular ones
+* clean up the awful bits
+
