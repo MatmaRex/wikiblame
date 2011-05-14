@@ -179,16 +179,15 @@ class WikiBlame
 	end
 	
 	def get_colors n
+		# generate mostly unique colors, based on their hue
 		if n<=9
-			# generate mostly unique colors, based on their hue; 1 shade for each hue
-			
+			# 1 shade for each hue
 			hues = n
 			colors = (1..hues).map{|i| (i.to_f/hues*360).floor} # calculate the hues; from 1, so we do not "wrap over" the wheel
 
 			colors = colors.map{|hue| "hsl(#{hue}, 100%, 35%)"}
 		else
-			# generate mostly unique colors, based on their hue; allow 3 shades for each hue
-			
+			# allow 3 shades for each hue
 			hues = (n.to_f / 3).ceil # make sure there is just enough
 			colors = (1..hues).map{|i| (i.to_f/hues*360).floor} # calculate the hues; from 1, so we do not "wrap over" the wheel
 
@@ -253,17 +252,17 @@ class WikiBlame
 		if @collapse
 			versions.each_cons 2 do |pv, nv|
 				if pv.user==nv.user and !pv.revert and !nv.revert # ignore reverts
-					pv.deleteme=true
+					pv.delete_me = true
 					nv.replace Version[
-						nv.text, 
-						nv.user, 
-						[pv.timestamp, nv.timestamp].flatten, 
+						nv.text,
+						nv.user,
+						[pv.timestamp, nv.timestamp].flatten,
 						[pv.comment, nv.comment].flatten
 					]
 				end
 			end
 			
-			versions.delete_if{|v| v.deleteme}
+			versions.delete_if{|v| v.delete_me}
 		end
 		
 		
@@ -297,7 +296,7 @@ class WikiBlame
 		end
 		
 		
-		str=StringWithMarks.new(versions[0].text)
+		str=StringWithMarks.new versions[0].text
 
 		(versions.length-1).times do |i|
 			next if versions[i].revert # don't start from reverts
@@ -318,7 +317,7 @@ class WikiBlame
 				"</span>"
 			}.join("<br>\n") # yay superfluous indentation!
 		
-		articlehtml = str.outputmarks
+		articlehtml = str.output_marks
 		
 		css = '' # TODO
 		
@@ -356,14 +355,16 @@ class Mark < Array
 	def index; self[0]; end
 	def color; self[1]; end
 	def length; self[2]; end
+	def i; self[3]; end
 	
 	def index=a; self[0]=a; end
 	def color=a; self[1]=a; end
 	def length=a; self[2]=a; end
+	def i=a; self[3]=a; end
 end
 
 class Object
-	attr_accessor :deleteme
+	attr_accessor :delete_me
 end
 
 class NilClass
@@ -379,27 +380,27 @@ class StringWithMarks < String
 		@marks=[]
 	end
 
-	def insertat(index, text)
+	def insert_at index, text
 		s=self[0, index]
 		e=self[index, length-index]
 		
 		"#{s}#{text}#{e}"
 	end
 	
-	def insertat!(index, text)
-		self[0, length]=self.insertat(index, text)
+	def insert_at! index, text
+		self[0, length]=self.insert_at(index, text)
 	end
 	
-	def addmark(index, color, length)
+	def add_mark index, color, length
 		@marks<<Mark[index, color, length]
 		return @marks.length-1
 	end
 
-	def removemark(id)
-		@marks.delete(id)
+	def remove_mark id
+		@marks.delete id
 	end
 	
-	def nudgemarks(length, index, type)
+	def nudge_marks length, index, type
 		if type==:-
 			@marks.each do |m|
 				if m.index>=index # m starts after removed part's start
@@ -413,77 +414,90 @@ class StringWithMarks < String
 					if m.index+m.length<=index # m is all before removed part
 						# do nothing
 					else # m.index+m.length>index - removed part starts in m
-						m.length-=length # so shorten m
+						m.length-=length # so shorten it
 					end
 				end
 			end
 		else
 			@marks.each do |m|
-				if m.index>=index # added part starts after m's start
+				if m.index>=index # m starts after added part's start
 					if m.index>index+length # m is all after added part
 						m.index+=length # so move it forward
 					else # m.index<=index+length - added part ends in m
 						m.index+=length # so move it forward
 					end
-				else # m.index<index - added part starts before m's start
+				else # m.index<index - m starts before added part's start
 					if m.index+m.length<=index # m is all before added part
 						# do nothing
 					else # m.index+m.length>index - added part starts in m
-						m.length+=length # so lenghten it
+						m.length+=length # so lengthen it
 					end
 				end
 			end
 		end
 		
-		@marks.delete_if{|m| m[2]<1 || m[0]<0}
+		@marks.delete_if{|m| m.length<1 or m.index<0}
 	end
 	
-	def outputmarks
-		m=@marks.each_with_index{|e, i| e[3]=i} # add index info
-		m=m.sort{|m1, m2| ((a=m1[0]<=>m2[0])==0 ? a=m2[2]<=>m1[2] : a) }
-		addthem=[]
+	# basically - if two marks overlap, split one of them
+	def normalize_marks!
+		# kill null marks
+		@marks.delete_if{|m| m.length<1 or m.index<0}
 		
-		m.reverse!
-		m.each_cons 2 do |later, earlier|
-			if earlier[0]+earlier[2]>later[0]
-				addthem<<[ earlier[0], earlier[1], later[0]-earlier[0],              earlier[3] ]
-				addthem<<[ later[0],   earlier[1], earlier[2]-(later[0]-earlier[0]), earlier[3] ]
-				earlier.deleteme=true
+		# add original index info
+		@marks.each_with_index{|m, i| m.i=i}
+		
+		# sort marks by positions
+		@marks=@marks.sort_by{|m| [m.index, m.length] }
+		
+		addthem=[]
+		@marks.reverse!
+		@marks.each_cons 2 do |later, earlier|
+			# if earlier overlaps later, split it in two
+			if earlier.index+earlier.length > later.index
+				addthem<<Mark[ earlier.index, earlier.color, later.index-earlier.index,                  earlier.i ]
+				addthem<<Mark[ later.index,   earlier.color, earlier.length-(later.index-earlier.index), earlier.i ]
+				earlier.delete_me = true
 			end
 		end
-		m.delete_if{|i| i.deleteme}
-		m=m+addthem
-		@marks=m=m.sort_by{|m| m[3]}
 		
+		@marks.delete_if{|i| i.delete_me}
+		@marks+=addthem
+		
+		# resort in original order
+		@marks=@marks.sort_by{|m| m.i}
+	end
+	
+	def output_marks
+		normalize_marks!
+		
+		# figure out where do we want to place the spans, and in what order
 		inserts=[]
 		@marks.each do |index, color, length|
-			inserts[index]=[] if inserts[index]==nil
-			inserts[index+length]=[] if inserts[index+length]==nil
+			inserts[index]=[] unless inserts[index]
+			inserts[index+length]=[] unless inserts[index+length]
 			
 			inserts[index].push "<span style='background:#{color}; color:#{foreground_for color}'>"
-			inserts[index+length].send((index!=index+length ? 'unshift' : 'push'), '</span>')
+			inserts[index+length].unshift '</span>'
 		end
 		
-		s=self.clone
-		realindex=0
-		self.length.times do |fakeindex|
-			inserts[fakeindex].each do |text|
-				s.insertat!(realindex, text)
-				realindex+=text.length
-			end
-			realindex+=1
+		# and actually place them - in reverse, so we don't have to worry about inserts moving the text
+		s = self.clone # we don't want to insert marks in self
+		
+		# doesn't work - indices start from 0, not from n
+		# inserts.reverse_each.with_index do |arr, i|
+		
+		(inserts.length-1).downto(0) do |i|
+			arr = inserts[i]
+			next if !arr or arr.empty?
+			
+			s.insert_at! i, arr.join('')
 		end
 		
-		
-		# m.reverse_each do |index, color, length|
-			# s.insertat!(index+length, '</span>')
-			# s.insertat!(index, '<span style="background:'+color+'">')
-		# end
-		
-		return s
+		return s.to_s
 	end
 	
-	def patch(diffs, color)
+	def patch diffs, color
 		r=self.clone
 		
 		adds=[]
@@ -502,13 +516,13 @@ class StringWithMarks < String
 		removes.reverse_each do |index, text|
 			raise "Actual text not matching diff data when deleting - #{r[index, text.length]} vs #{text}" if r[index, text.length]!=text
 			r[index, text.length]=''
-			r.nudgemarks(text.length, index, :-)
+			r.nudge_marks text.length, index, :-
 		end
 		
 		adds.each do |index, text|
-			r.insertat! index, text
-			r.nudgemarks(text.length, index, :+)
-			r.addmark index, color, text.length
+			r.insert_at! index, text
+			r.nudge_marks text.length, index, :+
+			r.add_mark index, color, text.length
 		end
 		
 		return r
