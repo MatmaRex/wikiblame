@@ -7,7 +7,7 @@ Heroku platform enforces some hard limits, most important one being 30 seconds p
 What I wrote to a friend about it: (in Polish)
 
 Matma Rex, 2011-05-13 19:22:12:
-pozwala zobaczyc, kto dok³adnie napisa³ któr¹ literkê w artykule
+pozwala zobaczyc, kto dokÅ‚adnie napisaÅ‚ ktÃ³rÄ… literkÄ™ w artykule
 
 na przyklad: http://wikiblame.heroku.com/diff?lang=pl&article=Motorola+DynaTAC&reverts=on&revertshard=on&collapse=on
 od razu widac, ze z mojego oryginalu artykulu zostalo malo co, a glownym autorem jest Ananas96
@@ -17,7 +17,7 @@ podobnie - z oryginalu ipka jest malo co, glownym autorem jest Elster, ktory opi
 widac, ze pare osob kombinowalo z formatowaniem, a boty z interwiki
 
 http://wikiblame.heroku.com/diff?lang=pl&article=Erupcja+wulkanu&reverts=on&revertshard=on&collapse=on
-(to moze sie chwile ³adowac)
+(to moze sie chwile Å‚adowac)
 glowny artykul jest taki, jak byl na poczatku, potem ktos dodal tabelke, ktos inny obrazki, pare osob po jednym zdaniu, a boty - interwiki
 
 musze jeszcze pare rzeczy zrobic, zeby to bylo uzyteczne, i wymyslic cos, zeby kolory sie nie zlewaly
