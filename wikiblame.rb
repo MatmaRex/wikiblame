@@ -39,9 +39,9 @@ module WikiBlameCamping
 				when 'README'
 					@source1||=File.read './README'
 				when 'wikiblame.rb'
-					@source1||=File.read './wikiblame.rb'
+					@source2||=File.read './wikiblame.rb'
 				when 'algo-diff.rb'
-					@source2||=File.read './algo-diff.rb'
+					@source3||=File.read './algo-diff.rb'
 				else
 					'Nope.'
 				end
