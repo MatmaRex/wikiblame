@@ -1,3 +1,4 @@
+# coding: utf-8
 #
 # algorith/diff - a Ruby module to compute difference sets between two
 # objects. Copyright (c) 2001-2002 Lars Christensen.
@@ -492,7 +493,7 @@ module Diffable
 		low = 0
 		index = found = nil
 		while low < high
-			index = (high+low) >> 1
+			index = (high+low) / 2
 			found = self[index]
 			if value > found                # this first, most common case
 				low = index + 1
