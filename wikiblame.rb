@@ -59,9 +59,10 @@ module WikiBlameCamping
 				pilcrow = (@request['pilcrow'] and @request['pilcrow']!='') ? true : false
 				parsed = (@request['parsed'] and @request['parsed']!='') ? true : false
 				colorusers = (@request['colorusers'] and @request['colorusers']!='') ? true : false
+				granularity = (@request['granularity'] and @request['granularity']!='') ? @request['granularity'] : 'chars'
 				
 				
-				blame = WikiBlame.new lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers
+				blame = WikiBlame.new lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers, granularity
 				
 				@parsed = parsed
 				@title = "#{article} - Wiki blame"
@@ -90,6 +91,15 @@ module WikiBlameCamping
 			input id:name, value:default
 		end
 		
+		# options: {value => label}
+		def _radio text, name, options, checked=0
+			label text, :for=>name
+			options.each_pair do |val, text|
+				input name:name, type:'radio', value:val, id:"radio-#{name}-#{val}"
+				label text, :for=>"radio-#{name}-#{val}"
+			end
+		end
+		
 		def _checkbox text, name, checked=false
 			label text, :for=>name
 			
@@ -112,6 +122,9 @@ module WikiBlameCamping
 					li{ _checkbox 'Exclude reverts *hard*? (Compare every two revisions) ', :revertshard, true }
 					li{ _checkbox 'Collapse subsequent revisions by the same user? ', :collapse, true }
 					li{ _checkbox 'Assign unique colors to users instead of revisions? ', :colorusers, false }
+					li{ _radio 'Diff granularity: ', :granularity, {
+						chars: ' characters ', words: ' words ', lines: ' lines ' }
+					}
 				end
 				
 				ul do
@@ -147,8 +160,8 @@ module WikiBlameCamping
 end
 
 class WikiBlame
-	def initialize lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers
-		@lang, @article, @reverts, @collapse, @revertshard, @pilcrow, @parsed, @colorusers = lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers
+	def initialize lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers, granularity
+		@lang, @article, @reverts, @collapse, @revertshard, @pilcrow, @parsed, @colorusers, @granularity = lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers, granularity
 	end
 	
 	def get_colors n
@@ -184,10 +197,10 @@ class WikiBlame
 		versions = versions['query']['pages'].values[0]['revisions']
 		versions = versions.map do |r| 
 			Version[
-				html_escape(r['*'] || "<hidden>").gsub(/\r?\n/, "#{@pilcrow ? '&para;' : ''}\n"), 
-				html_escape(r['user'] || "<hidden>"), 
+				(r['*'] || "<hidden>"), 
+				(r['user'] || "<hidden>"), 
 				r['timestamp'], 
-				html_escape(r['comment'] || "<hidden>"),
+				(r['comment'] || "<hidden>"),
 				nil,
 				nil,
 				r['revid']
@@ -229,8 +242,8 @@ class WikiBlame
 					nv.replace Version[
 						nv.text,
 						nv.user,
-						[pv.timestamp, nv.timestamp].flatten,
-						[pv.comment, nv.comment].flatten
+						[pv.timestamp, nv.timestamp].join(", "),
+						[pv.comment, nv.comment].join("; ")
 					]
 				end
 			end
@@ -268,8 +281,16 @@ class WikiBlame
 			end
 		end
 		
+		massage = lambda{|text|
+			ary = case @granularity
+			when 'chars'; text.split('')
+			when 'words'; text.split(/\b/)
+			when 'lines'; text.split(/(?<=\n)/)
+			end
+			ary.map{|a| html_escape(a).gsub(/\r?\n/, "#{@pilcrow ? '&para;' : ''}\n") }
+		}
 		
-		str = StringWithMarks.new versions[0].text
+		data = PatchRecorder.new massage.call versions[0].text
 
 		(versions.length-1).times do |i|
 			next if versions[i].revert # don't start from reverts
@@ -278,19 +299,19 @@ class WikiBlame
 			j += 1 until !versions[j] or !versions[j].revert # and don't finish at them
 			next if !versions[j] # latest revisions were reverts
 			
-			d = ::Diff.diff versions[i].text, versions[j].text
-			str = str.patch d, versions[j].color
+			d = ::Diff.diff massage.call(versions[i].text), massage.call(versions[j].text)
+			data = data.patch d, versions[j].color
 		end
 		
 		legendhtml = 
 			"Legend (#{versions.length} revisions shown):<br>\n" +
 			versions.map{|v| 
 				"<span style='background:#{v.color}; color:#{foreground_for v.color}'>" + 
-					"#{v.user} at #{v.timestamp}, comment: #{v.comment} (#{v.color})" + 
+					"#{html_escape v.user} at #{html_escape v.timestamp}, comment: #{html_escape v.comment} (#{v.color})" + 
 				"</span>"
 			}.join("<br>\n") # yay superfluous indentation!
 		
-		articlehtml = str.output_marks
+		articlehtml = data.output_marks.join('')
 		
 		css = '' # TODO
 		
@@ -340,25 +361,14 @@ class Object
 	attr_accessor :delete_me
 end
 
-class StringWithMarks < String
+class PatchRecorder < Array
 	attr_reader :marks
 
 	def initialize *args
-		super *args
-		@marks=[]
+		super
+		@marks = []
 	end
 
-	def insert_at index, text
-		s=self[0, index]
-		e=self[index, length-index]
-		
-		"#{s}#{text}#{e}"
-	end
-	
-	def insert_at! index, text
-		self[0, length]=self.insert_at(index, text)
-	end
-	
 	def add_mark index, color, length
 		@marks<<Mark[index, color, length]
 		return @marks.length-1
@@ -459,10 +469,10 @@ class StringWithMarks < String
 			arr = inserts[i]
 			next if !arr or arr.empty?
 			
-			s.insert_at! i, arr.join('')
+			s[i, 0] = arr.join('')
 		end
 		
-		return s.to_s
+		return s
 	end
 	
 	def patch diffs, color
@@ -483,12 +493,12 @@ class StringWithMarks < String
 		
 		removes.reverse_each do |index, text|
 			raise "Actual text not matching diff data when deleting - #{r[index, text.length]} vs #{text}" if r[index, text.length]!=text
-			r[index, text.length]=''
+			r[index, text.length]=[]
 			r.nudge_marks text.length, index, :-
 		end
 		
 		adds.each do |index, text|
-			r.insert_at! index, text
+			r[index, 0] = text
 			r.nudge_marks text.length, index, :+
 			r.add_mark index, color, text.length
 		end
