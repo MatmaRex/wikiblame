@@ -38,11 +38,11 @@ module WikiBlameCamping
 				
 				case file
 				when 'README'
-					@source1||=File.read './README'
+					@source1 ||= File.read './README'
 				when 'wikiblame.rb'
-					@source2||=File.read './wikiblame.rb'
+					@source2 ||= File.read './wikiblame.rb'
 				when 'algo-diff.rb'
-					@source3||=File.read './algo-diff.rb'
+					@source3 ||= File.read './algo-diff.rb'
 				else
 					'Nope.'
 				end
@@ -101,8 +101,6 @@ module WikiBlameCamping
 		end
 		
 		def index
-			#style 'label{display:block}', type:"text/css"
-			
 			form action:'/diff', method:'get' do
 				ul do
 					li{ _input 'Wiki language code: ', :lang, 'pl' }
@@ -148,28 +146,6 @@ module WikiBlameCamping
 	end
 end
 
-# class Sunflower
-	# def API(request, cache=false)
-		# if cache
-			# fname = 'cache-'+request.gsub(/[^a-zA-Z0-9]/,'_')+'.txt'
-			# if File.exist? fname
-				# return JSON.parse(File.read fname)
-			# end
-		# end
-		
-		# self.log 'http://'+@wikiURL+'/w/api.php?'+request+'&format=jsonfm'
-		# http = HTTP.start(@wikiURL)
-		# resp = http.request(HTTP::Post.new('/w/api.php', @headers), request+'&format=json')
-		# data = resp.body.to_s
-		
-		# if cache
-			# File.open(fname,'w'){|f| f.write data}
-		# end
-		
-		# JSON.parse(resp.body.to_s)
-	# end
-# end
-
 class WikiBlame
 	def initialize lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers
 		@lang, @article, @reverts, @collapse, @revertshard, @pilcrow, @parsed, @colorusers = lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers
@@ -200,13 +176,13 @@ class WikiBlame
 	end
 	
 	def blame
-		s=Sunflower.new @lang+'.wikipedia.org'
-		s.warnings=false
-		s.log=false
+		s = Sunflower.new @lang+'.wikipedia.org'
+		s.warnings = false
+		s.log = false
 
-		versions=s.API("action=query&prop=revisions&titles=#{CGI.escape @article}&rvlimit=500&rvprop=#{CGI.escape "#{@parsed ? '' : 'content|'}timestamp|user|comment|ids"}&rvdir=newer")
-		versions=versions['query']['pages'].values[0]['revisions']
-		versions=versions.map do |r| 
+		versions = s.API("action=query&prop=revisions&titles=#{CGI.escape @article}&rvlimit=500&rvprop=#{CGI.escape "#{@parsed ? '' : 'content|'}timestamp|user|comment|ids"}&rvdir=newer")
+		versions = versions['query']['pages'].values[0]['revisions']
+		versions = versions.map do |r| 
 			Version[
 				html_escape(r['*'] || "<hidden>").gsub(/\r?\n/, "#{@pilcrow ? '&para;' : ''}\n"), 
 				html_escape(r['user'] || "<hidden>"), 
@@ -230,25 +206,25 @@ class WikiBlame
 		
 		if @revertshard
 			# compare every two, starting with longest spans - if the same, mark all inbetween as reverts
-			(versions.length).downto(2) do |num| # downto(2) means we also handle "edits" with no changes - like page moves
-				versions.each_cons(num).with_index do |cons, i|
-					if cons[0].text==cons[-1].text # we have a revert!
-						cons[1...cons.length].each{|v| v.revert=true} # mark as reverts
+			(versions.length).downto(2) do |len| # downto(2) means we also handle "edits" with no changes - like page moves
+				versions.each_cons(len).with_index do |cons, i|
+					if cons[0].text == cons[-1].text # we have a revert!
+						cons[1...cons.length].each{|v| v.revert = true} # mark as reverts
 					end
 				end
 			end
 		elsif @reverts
 			# only compare consecutive
 			versions.each_cons 3 do |a, b, a_again|
-				if a.text==a_again.text # we have a revert!
-					b.revert=a_again.revert=true # mark as reverts
+				if a.text == a_again.text # we have a revert!
+					b.revert = a_again.revert = true # mark as reverts
 				end
 			end
 		end
 		
 		if @collapse
 			versions.each_cons 2 do |pv, nv|
-				if pv.user==nv.user and !pv.revert and !nv.revert # ignore reverts
+				if pv.user == nv.user and !pv.revert and !nv.revert # ignore reverts
 					pv.delete_me = true
 					nv.replace Version[
 						nv.text,
@@ -273,9 +249,9 @@ class WikiBlame
 
 			versions.each do |v|
 				if v.revert
-					v.color='grey' # reverts are grey
+					v.color = 'grey' # reverts are grey
 				else
-					v.color=user_to_color[v.user]
+					v.color = user_to_color[v.user]
 				end
 			end
 		else
@@ -285,25 +261,25 @@ class WikiBlame
 		
 			versions.each do |v|
 				if v.revert
-					v.color='grey' # reverts are grey
+					v.color = 'grey' # reverts are grey
 				else
-					v.color=colors.shift
+					v.color = colors.shift
 				end
 			end
 		end
 		
 		
-		str=StringWithMarks.new versions[0].text
+		str = StringWithMarks.new versions[0].text
 
 		(versions.length-1).times do |i|
 			next if versions[i].revert # don't start from reverts
 			
-			j=i+1
-			j+=1 until !versions[j] or !versions[j].revert # and don't finish at them
+			j = i+1
+			j += 1 until !versions[j] or !versions[j].revert # and don't finish at them
 			next if !versions[j] # latest revisions were reverts
 			
 			d = ::Diff.diff versions[i].text, versions[j].text
-			str=str.patch d, versions[j].color
+			str = str.patch d, versions[j].color
 		end
 		
 		legendhtml = 
