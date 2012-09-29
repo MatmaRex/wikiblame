@@ -1,3 +1,4 @@
+# coding: utf-8
 # WikiBlame v 0.3 by Matma Rex
 # matma.rex@gmail.com
 # released under CC-BY-SA 3.0
