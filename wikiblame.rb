@@ -208,10 +208,10 @@ class WikiBlame
 		versions=versions['query']['pages'].values[0]['revisions']
 		versions=versions.map do |r| 
 			Version[
-				html_escape(r['*'].to_s).gsub(/\r?\n/, "#{@pilcrow ? '&para;' : ''}\n"), 
-				html_escape(r['user']), 
+				html_escape(r['*'] || "<hidden>").gsub(/\r?\n/, "#{@pilcrow ? '&para;' : ''}\n"), 
+				html_escape(r['user'] || "<hidden>"), 
 				r['timestamp'], 
-				html_escape(r['comment']),
+				html_escape(r['comment'] || "<hidden>"),
 				nil,
 				nil,
 				r['revid']
