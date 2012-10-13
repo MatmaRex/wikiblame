@@ -7,6 +7,8 @@ require 'sunflower'
 require 'camping'
 require 'diff-lcs'
 
+require 'benchmark'
+
 Camping.goes :WikiBlameCamping
 
 module WikiBlameCamping
@@ -45,12 +47,16 @@ module WikiBlameCamping
 				colorusers = (@request['colorusers'] and @request['colorusers']!='') ? true : false
 				granularity = (@request['granularity'] and @request['granularity']!='') ? @request['granularity'] : 'chars'
 				
-				
 				blame = WikiBlame.new lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers, granularity
+				
 				
 				@parsed = parsed
 				@title = "#{article} - Wiki blame"
-				@css, @legendhtml, @articlehtml = blame.blame
+				
+				@time = Benchmark.realtime {
+					@css, @legendhtml, @articlehtml = blame.blame
+				}
+				
 				
 				render :diff
 			end
@@ -129,6 +135,9 @@ module WikiBlameCamping
 			
 			div style:'border:1px solid black; margin:5px; padding:5px; float:right' do
 				text! @legendhtml
+				
+				br; br
+				text "Rendered in #{@time.round 2} seconds."
 			end
 			
 			div style:(@parsed ? '' : 'white-space:pre-wrap; font-family:monospace') do
