@@ -184,7 +184,7 @@ class WikiBlame
 		versions = s.API("action=query&prop=revisions&titles=#{CGI.escape @article}&rvlimit=500&rvprop=#{CGI.escape "#{@parsed ? '' : 'content|'}timestamp|user|comment|ids"}&rvdir=newer")
 		versions = versions['query']['pages'].values[0]['revisions']
 		versions = versions.map do |r| 
-			Version[
+			Version.new(
 				(r['*'] || "<hidden>"), 
 				(r['user'] || "<hidden>"), 
 				r['timestamp'], 
@@ -192,7 +192,7 @@ class WikiBlame
 				nil,
 				nil,
 				r['revid']
-			]
+			)
 		end
 		
 		
@@ -227,12 +227,9 @@ class WikiBlame
 			versions.each_cons 2 do |pv, nv|
 				if pv.user == nv.user and !pv.revert and !nv.revert # ignore reverts
 					pv.delete_me = true
-					nv.replace Version[
-						nv.text,
-						nv.user,
-						[pv.timestamp, nv.timestamp].join(", "),
-						[pv.comment, nv.comment].join("; ")
-					]
+					nv.timestamp = [pv.timestamp, nv.timestamp].join(", ")
+					nv.comment = [pv.comment, nv.comment].join("; ")
+					nv.revid = [pv.revid, nv.revid].flatten
 				end
 			end
 			
@@ -315,40 +312,8 @@ def foreground_for color
 	$1.to_i<=35 ? 'white' : 'black'
 end
 
-class Version < Array
-	def text; self[0]; end
-	def user; self[1]; end
-	def timestamp; self[2]; end
-	def comment; self[3]; end
-	def color; self[4]; end
-	def revert; self[5]; end
-	def revid; self[6]; end
-	
-	def text=a; self[0]=a; end
-	def user=a; self[1]=a; end
-	def timestamp=a; self[2]=a; end
-	def comment=a; self[3]=a; end
-	def color=a; self[4]=a; end
-	def revert=a; self[5]=a; end
-	def revid=a; self[6]=a; end
-end
-
-class Mark < Array
-	def index; self[0]; end
-	def color; self[1]; end
-	def length; self[2]; end
-	def i; self[3]; end
-	
-	def index=a; self[0]=a; end
-	def color=a; self[1]=a; end
-	def length=a; self[2]=a; end
-	def i=a; self[3]=a; end
-	
-	def inspect
-		"<Mark index=#{index} length=#{length} color=#{color}>"
-	end
-	alias to_s inspect
-end
+Version = Struct.new :text, :user, :timestamp, :comment, :color, :revert, :revid
+Mark = Struct.new :index, :color, :length, :i
 
 class Object
 	attr_accessor :delete_me
@@ -364,7 +329,7 @@ class PatchRecorder < Array
 	end
 
 	def add_mark index, color, length
-		@marks<<Mark[index, color, length]
+		@marks << Mark.new(index, color, length)
 		return @marks.length-1
 	end
 
@@ -434,9 +399,9 @@ class PatchRecorder < Array
 			# if earlier overlaps later, split it in two
 			if earlier.index+earlier.length > later.index
 				@marks[i, 2] = [
-					Mark[ earlier.index, earlier.color, later.index-earlier.index, earlier.i ],
+					Mark.new( earlier.index, earlier.color, later.index-earlier.index, earlier.i ),
 					later,
-					Mark[ later.index+later.length, earlier.color,  earlier.length-(later.length)-(later.index-earlier.index), earlier.i  ],
+					Mark.new( later.index+later.length, earlier.color, earlier.length-(later.length)-(later.index-earlier.index), earlier.i ),
 				]
 				
 				# we have to re-sort the entire thing from this point on... (tested)
@@ -453,7 +418,7 @@ class PatchRecorder < Array
 		
 		# figure out where do we want to place the spans, and in what order
 		inserts=[]
-		@marks.each do |index, color, length|
+		@marks.map{|m| m.to_a}.each do |index, color, length|
 			inserts[index]=[] unless inserts[index]
 			inserts[index+length]=[] unless inserts[index+length]
 			
