@@ -285,7 +285,7 @@ class WikiBlame
 			when 'words'; text.split(/\b/)
 			when 'lines'; text.split(/(?<=\n)/)
 			end
-			ary.map{|a| html_escape(a).gsub(/\r?\n/, "#{@pilcrow ? '&para;' : ''}\n") }
+			ary.map{|a| (@parsed ? a : html_escape(a)).gsub(/\r?\n/, "#{@pilcrow ? '&para;' : ''}\n") }
 		}
 		
 		data = PatchRecorder.new massage.call versions[0].text
