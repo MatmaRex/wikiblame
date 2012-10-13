@@ -3,23 +3,9 @@
 # matma.rex@gmail.com
 # released under CC-BY-SA 3.0
 
-
-
-# this is a nasty fix. some versions of Markaby want to undef these methods, 
-# and some versions of Builder do not define them,
-# thus causing an exception. 
-require 'builder'
-class Builder::BlankSlate
-	unless method_defined? :to_s; def to_s; end; end
-	unless method_defined? :inspect; def inspect; end; end
-	unless method_defined? :==; def ==; end; end
-end
-
-
 require 'sunflower'
 require 'camping'
 require 'diff-lcs'
-
 
 Camping.goes :WikiBlameCamping
 
@@ -73,9 +59,9 @@ module WikiBlameCamping
 	
 	module Views
 		def layout
-			text '<!DOCTYPE html>'
 			html do
 				head do
+					meta charset:'utf-8'
 					title @title
 				end
 				body do
@@ -86,7 +72,7 @@ module WikiBlameCamping
 		
 		def _input text, name, default=''
 			label text, :for=>name
-			input id:name, value:default
+			input name:name, id:name, value:default
 		end
 		
 		# options: {value => label}
@@ -100,12 +86,7 @@ module WikiBlameCamping
 		
 		def _checkbox text, name, checked=false
 			label text, :for=>name
-			
-			if checked
-				input id:name, type:'checkbox', checked:'checked'
-			else
-				input id:name, type:'checkbox'
-			end
+			input name:name, id:name, type:'checkbox', checked:(!!checked)
 		end
 		
 		def index
@@ -147,11 +128,11 @@ module WikiBlameCamping
 			# do something with @css...
 			
 			div style:'border:1px solid black; margin:5px; padding:5px; float:right' do
-				text @legendhtml
+				text! @legendhtml
 			end
 			
 			div style:(@parsed ? '' : 'white-space:pre-wrap; font-family:monospace') do
-				text @articlehtml
+				text! @articlehtml
 			end
 		end
 	end
