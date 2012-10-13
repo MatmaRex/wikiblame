@@ -334,6 +334,11 @@ class Mark < Array
 	def color=a; self[1]=a; end
 	def length=a; self[2]=a; end
 	def i=a; self[3]=a; end
+	
+	def inspect
+		"<Mark index=#{index} length=#{length} color=#{color}>"
+	end
+	alias to_s inspect
 end
 
 class Object
@@ -346,6 +351,7 @@ class PatchRecorder < Array
 	def initialize *args
 		super
 		@marks = []
+		self.add_mark 0, 'white', self.length
 	end
 
 	def add_mark index, color, length
@@ -404,39 +410,33 @@ class PatchRecorder < Array
 		@marks.each_with_index{|m, i| m.i=i}
 		
 		# sort marks by positions
-		@marks=@marks.sort_by{|m| [m.index, m.length] }
-		# collapse consecutive with the same color if possible
+		@marks=@marks.sort_by{|m| [m.index, -m.length] }
+		
+		normalize_marks_overlap
+		
+		# resort in original order
+		@marks=@marks.sort_by{|m| m.i}
+	end
+	# if two marks overlap, split one of them
+	def normalize_marks_overlap
 		i = 0
 		while i < @marks.length - 1
-			a, b = @marks[i], @marks[i+1]
-			if a.index+a.length == b.index and a.color == b.color
-				@marks[i].length += b.length
-				@marks.delete_at i+1
-			else
-				i += 1
-			end
-		end
-		# resort in original order
-		@marks=@marks.sort_by{|m| m.i}
-		
-		
-		# sort marks by positions
-		@marks=@marks.sort_by{|m| [m.index, m.length] }
-		# if two marks overlap, split one of them
-		addthem=[]
-		@marks.reverse!
-		@marks.each_cons 2 do |later, earlier|
+			earlier, later = @marks[i], @marks[i+1]
 			# if earlier overlaps later, split it in two
 			if earlier.index+earlier.length > later.index
-				addthem<<Mark[ earlier.index, earlier.color, later.index-earlier.index,                  earlier.i ]
-				addthem<<Mark[ later.index,   earlier.color, earlier.length-(later.index-earlier.index), earlier.i ]
-				earlier.delete_me = true
+				@marks[i, 2] = [
+					Mark[ earlier.index, earlier.color, later.index-earlier.index, earlier.i ],
+					later,
+					Mark[ later.index+later.length, earlier.color,  earlier.length-(later.length)-(later.index-earlier.index), earlier.i  ],
+				]
+				
+				# we have to re-sort the entire thing from this point on... (tested)
+				@marks[i..-1] = @marks[i..-1].sort_by{|m| [m.index, -m.length] }
+				
 			end
+			
+			i += 1
 		end
-		@marks.delete_if{|i| i.delete_me}
-		@marks+=addthem
-		# resort in original order
-		@marks=@marks.sort_by{|m| m.i}
 	end
 	
 	def output_marks
@@ -462,15 +462,32 @@ class PatchRecorder < Array
 			arr = inserts[i]
 			next if !arr or arr.empty?
 			
-			s[i, 0] = arr.join('')
+			s[i, 0] = [arr.join('')]
 		end
 		
 		return s
 	end
 	
+	# collapse consecutive with the same color if possible
+	def normalize_marks_collapse
+		# return
+		i = 0
+		while i < @marks.length - 1
+			a, b = @marks[i], @marks[i+1]
+			if a.index+a.length == b.index and a.color == b.color
+				new = a.dup
+				new.length += b.length
+				
+				@marks[i, 2] = [new]
+				i += 1
+				# normalize_marks_overlap
+			else
+				i += 1
+			end
+		end
+	end
+	
 	def patch diffs, color
-		r=self.clone
-		
 		adds=[]
 		removes=[]
 		
@@ -486,19 +503,21 @@ class PatchRecorder < Array
 		end
 		
 		removes.reverse_each do |index, text|
-			raise "Actual text not matching diff data when deleting - #{r[index].inspect} vs #{text.inspect}" if r[index]!=text
+			raise "Actual text not matching diff data when deleting - #{self[index].inspect} vs #{text.inspect}" if self[index]!=text
 			
-			r.delete_at index
-			r.nudge_marks 1, index, :-
+			self.delete_at index
+			self.nudge_marks 1, index, :-
 		end
+		normalize_marks_collapse
 		
 		adds.each do |index, text|
-			r[index, 0] = text
-			r.nudge_marks 1, index, :+
-			r.add_mark index, color, 1
+			self[index, 0] = text
+			self.nudge_marks 1, index, :+
+			self.add_mark index, color, 1
 		end
+		normalize_marks_collapse
 		
-		return r
+		return self
   end
 end
 
