@@ -172,8 +172,11 @@ class WikiBlame
 		colors[0...n]
 	end
 	
-	def html_escape text
-		text.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
+	def html_escape_in_place text
+		text.gsub!('&', '&amp;')
+		text.gsub!('<', '&lt;')
+		text.gsub!('>', '&gt;')
+		text
 	end
 	
 	def blame
@@ -272,7 +275,22 @@ class WikiBlame
 			when 'words'; text.split(/\b/)
 			when 'lines'; text.split(/(?<=\n)/)
 			end
-			ary.map{|a| (@parsed ? a : html_escape(a)).gsub(/\r?\n/, "#{@pilcrow ? '&para;' : ''}\n") }
+			
+			proc = if @granularity == 'chars'
+				char_map = {
+					'&' => (@parsed ? '&' : '&amp;'),
+					'<' => (@parsed ? '<' :'&lt;'),
+					'>' => (@parsed ? '>' :'&gt;'),
+					"\r" => '',
+					"\n" => (@pilcrow ? '&para;' : '') + "\n",
+				}
+				
+				lambda{|a| char_map[a] || a }
+			else
+				lambda{|a| (@parsed ? a : html_escape_in_place(a)).gsub(/\r?\n/, "#{@pilcrow ? '&para;' : ''}\n") }
+			end
+			
+			ary.map! &proc
 		}
 		
 		data = PatchRecorder.new massage.call versions[0].text
@@ -292,7 +310,7 @@ class WikiBlame
 			"Legend (#{versions.length} revisions shown):<br>\n" +
 			versions.map{|v| 
 				"<span style='background:#{v.color}; color:#{foreground_for v.color}'>" + 
-					"#{html_escape v.user} at #{html_escape v.timestamp}, comment: #{html_escape v.comment} (#{v.color})" + 
+					"#{html_escape_in_place v.user} at #{html_escape_in_place v.timestamp}, comment: #{html_escape_in_place v.comment} (#{v.color})" + 
 				"</span>"
 			}.join("<br>\n") # yay superfluous indentation!
 		
