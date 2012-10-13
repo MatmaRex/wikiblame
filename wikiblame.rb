@@ -232,7 +232,8 @@ class WikiBlame
 					pv.delete_me = true
 					nv.timestamp = [pv.timestamp, nv.timestamp].join(", ")
 					nv.comment = [pv.comment, nv.comment].join("; ")
-					nv.revid = [pv.revid, nv.revid].flatten
+					# nv.revid = [pv.revid, nv.revid].flatten
+					nv.revid = pv.revid
 				end
 			end
 			
@@ -293,7 +294,7 @@ class WikiBlame
 			ary.map! &proc
 		}
 		
-		data = PatchRecorder.new massage.call versions[0].text
+		data = PatchRecorder.new massage.call(versions[0].text), versions[0].color
 
 		(versions.length-1).times do |i|
 			next if versions[i].revert # don't start from reverts
@@ -340,10 +341,10 @@ end
 class PatchRecorder < Array
 	attr_reader :marks
 
-	def initialize *args
-		super
+	def initialize base, base_color
+		super(base)
 		@marks = []
-		self.add_mark 0, 'white', self.length
+		self.add_mark 0, base_color, self.length
 	end
 
 	def add_mark index, color, length
