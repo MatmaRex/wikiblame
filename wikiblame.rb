@@ -16,9 +16,9 @@ class Builder::BlankSlate
 end
 
 
-require './algo-diff.rb'
 require 'sunflower'
 require 'camping'
+require 'diff-lcs'
 
 
 Camping.goes :WikiBlameCamping
@@ -41,8 +41,6 @@ module WikiBlameCamping
 					@source1 ||= File.read './README'
 				when 'wikiblame.rb'
 					@source2 ||= File.read './wikiblame.rb'
-				when 'algo-diff.rb'
-					@source3 ||= File.read './algo-diff.rb'
 				else
 					'Nope.'
 				end
@@ -136,10 +134,10 @@ module WikiBlameCamping
 				
 				p "WikiBlame v 0.3 by Matma Rex (matma.rex@gmail.com). Released under CC-BY-SA 3.0."
 				p{
-					"Read the source: 
-					#{a 'main file',      :href=>R(SourceX, 'wikiblame.rb')}, 
-					#{a 'algorithm file', :href=>R(SourceX, 'algo-diff.rb')}, 
-					#{a 'README file',    :href=>R(SourceX, 'README')}."
+					a 'Read the source',      :href=>R(SourceX, 'wikiblame.rb')
+					text ", "
+					a 'view the README',    :href=>R(SourceX, 'README')
+					text "."
 				}
 				p{a 'See me on Github!', :href=>'https://github.com/MatmaRex/wikiblame'}
 			end
@@ -299,7 +297,7 @@ class WikiBlame
 			j += 1 until !versions[j] or !versions[j].revert # and don't finish at them
 			next if !versions[j] # latest revisions were reverts
 			
-			d = ::Diff.diff massage.call(versions[i].text), massage.call(versions[j].text)
+			d = Diff::LCS.diff massage.call(versions[i].text), massage.call(versions[j].text)
 			data = data.patch d, versions[j].color
 		end
 		
@@ -417,7 +415,6 @@ class PatchRecorder < Array
 		@marks.delete_if{|m| m.length<1 or m.index<0}
 	end
 	
-	# basically - if two marks overlap, split one of them
 	def normalize_marks!
 		# kill null marks
 		@marks.delete_if{|m| m.length<1 or m.index<0}
@@ -427,7 +424,24 @@ class PatchRecorder < Array
 		
 		# sort marks by positions
 		@marks=@marks.sort_by{|m| [m.index, m.length] }
+		# collapse consecutive with the same color if possible
+		i = 0
+		while i < @marks.length - 1
+			a, b = @marks[i], @marks[i+1]
+			if a.index+a.length == b.index and a.color == b.color
+				@marks[i].length += b.length
+				@marks.delete_at i+1
+			else
+				i += 1
+			end
+		end
+		# resort in original order
+		@marks=@marks.sort_by{|m| m.i}
 		
+		
+		# sort marks by positions
+		@marks=@marks.sort_by{|m| [m.index, m.length] }
+		# if two marks overlap, split one of them
 		addthem=[]
 		@marks.reverse!
 		@marks.each_cons 2 do |later, earlier|
@@ -438,10 +452,8 @@ class PatchRecorder < Array
 				earlier.delete_me = true
 			end
 		end
-		
 		@marks.delete_if{|i| i.delete_me}
 		@marks+=addthem
-		
 		# resort in original order
 		@marks=@marks.sort_by{|m| m.i}
 	end
@@ -481,10 +493,11 @@ class PatchRecorder < Array
 		adds=[]
 		removes=[]
 		
-		diffs.each do |type, index, text|
-			if type==:-
+		diffs.flatten.map{|d| d.to_a}.each do |type, index, text|
+			case type.to_sym
+			when :-
 				removes<<[index, text]
-			elsif type==:+
+			when :+
 				adds<<[index, text]
 			else
 				raise 'Unknown diff type: '+type.to_s
@@ -492,15 +505,16 @@ class PatchRecorder < Array
 		end
 		
 		removes.reverse_each do |index, text|
-			raise "Actual text not matching diff data when deleting - #{r[index, text.length]} vs #{text}" if r[index, text.length]!=text
-			r[index, text.length]=[]
-			r.nudge_marks text.length, index, :-
+			raise "Actual text not matching diff data when deleting - #{r[index].inspect} vs #{text.inspect}" if r[index]!=text
+			
+			r.delete_at index
+			r.nudge_marks 1, index, :-
 		end
 		
 		adds.each do |index, text|
 			r[index, 0] = text
-			r.nudge_marks text.length, index, :+
-			r.add_mark index, color, text.length
+			r.nudge_marks 1, index, :+
+			r.add_mark index, color, 1
 		end
 		
 		return r
