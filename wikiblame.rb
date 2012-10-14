@@ -403,6 +403,7 @@ class PatchRecorder < Array
 	def normalize_marks!
 		# kill null marks
 		@marks.delete_if{|m| m.length<1 or m.index<0}
+		normalize_marks_collapse
 		
 		# add original index info
 		@marks.each_with_index{|m, i| m.i=i}
@@ -411,6 +412,10 @@ class PatchRecorder < Array
 		@marks=@marks.sort_by{|m| [m.index, -m.length] }
 		
 		normalize_marks_overlap
+		
+		# kill null marks
+		@marks.delete_if{|m| m.length<1 or m.index<0}
+		normalize_marks_collapse
 		
 		# resort in original order
 		@marks=@marks.sort_by{|m| m.i}
@@ -506,14 +511,14 @@ class PatchRecorder < Array
 			self.delete_at index
 			self.nudge_marks 1, index, :-
 		end
-		normalize_marks_collapse
+		normalize_marks!
 		
 		adds.each do |index, text|
 			self[index, 0] = text
 			self.nudge_marks 1, index, :+
 			self.add_mark index, color, 1
 		end
-		normalize_marks_collapse
+		normalize_marks!
 		
 		return self
   end
