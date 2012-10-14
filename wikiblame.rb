@@ -153,6 +153,8 @@ class WikiBlame
 	end
 	
 	def get_colors n
+		n -= 1
+		
 		# generate mostly unique colors, based on their hue
 		if n<=9
 			# 1 shade for each hue
@@ -169,7 +171,7 @@ class WikiBlame
 			colors = colors.map{|hue, lightness| "hsl(#{hue}, 100%, #{lightness}%)"}
 		end
 		
-		colors[0...n]
+		['white'] + colors[0...n]
 	end
 	
 	def html_escape_in_place text
