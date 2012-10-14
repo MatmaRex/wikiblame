@@ -284,6 +284,8 @@ class WikiBlame
 			
 			d = Diff::LCS.diff massage.call(versions[i].text), massage.call(versions[j].text)
 			data = data.patch d, versions[j].revid
+			
+			puts "#{i} / #{versions.length-1}: r#{versions[j].revid}, length=#{data.length}" if $VERBOSE
 		end
 		
 		data.normalize_marks!

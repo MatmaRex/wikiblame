@@ -6,6 +6,7 @@
 require 'ruby-prof'
 require_relative 'wikiblame'
 
+$VERBOSE = true
 
 # WikiBlame.new lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers, granularity
 # blame = WikiBlame.new 'pl', 'Zaginiona flota', true, true, true, false, false, false, 'chars'
