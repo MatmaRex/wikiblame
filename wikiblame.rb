@@ -131,7 +131,7 @@ module WikiBlameCamping
 		end
 		
 		def diff
-			# do something with @css...
+			style @css
 			
 			div style:'border:1px solid black; margin:5px; padding:5px; float:right' do
 				text! @legendhtml
@@ -240,36 +240,6 @@ class WikiBlame
 			versions.delete_if{|v| v.delete_me}
 		end
 		
-		
-		if @colorusers
-			# each user has unique color
-			userslist = versions.select{|v| !v.revert}.map{|v| v.user}.uniq
-			colors = get_colors userslist.length-1
-			colors.unshift 'white' # for the base revision
-			
-			user_to_color = Hash[ userslist.zip(colors) ]
-
-			versions.each do |v|
-				if v.revert
-					v.color = 'grey' # reverts are grey
-				else
-					v.color = user_to_color[v.user]
-				end
-			end
-		else
-			# each revision has unique color
-			colors = get_colors(versions.count{|v| !v.revert}-1) # dont count reverts
-			colors.unshift 'white' # for the base revision
-		
-			versions.each do |v|
-				if v.revert
-					v.color = 'grey' # reverts are grey
-				else
-					v.color = colors.shift
-				end
-			end
-		end
-		
 		massage = lambda{|text|
 			ary = case @granularity
 			when 'chars'; text.split('')
@@ -294,7 +264,7 @@ class WikiBlame
 			ary.map! &proc
 		}
 		
-		data = PatchRecorder.new massage.call(versions[0].text), versions[0].color
+		data = PatchRecorder.new massage.call(versions[0].text), versions[0].revid
 
 		(versions.length-1).times do |i|
 			next if versions[i].revert # don't start from reverts
@@ -304,20 +274,53 @@ class WikiBlame
 			next if !versions[j] # latest revisions were reverts
 			
 			d = Diff::LCS.diff massage.call(versions[i].text), massage.call(versions[j].text)
-			data = data.patch d, versions[j].color
+			data = data.patch d, versions[j].revid
 		end
+		
+		data.normalize_marks!
+		
+		used_revids = data.marks.map{|m| m.color }.sort.uniq
+		unused_versions = versions.reject{|v| used_revids.include? v.revid }
+		unused_versions.each do |v|
+			v.unused = true
+		end
+		
+		color_for = {}
+		if @colorusers
+			# each user has unique color
+			userslist = versions.select{|v| !v.revert && !v.unused}.map{|v| v.user}.uniq
+			colors = get_colors userslist.length-1
+			colors.unshift 'white' # for the base revision
+			user_to_color = Hash[ userslist.zip(colors) ]
+			
+			color_for = Hash[ versions.map{|v|
+				[v.revid, (v.revert||v.unused) ? 'grey' : user_to_color[v.user] ] # reverts are grey
+			} ]
+		else
+			# each revision has unique color
+			colors = get_colors(versions.count{|v| !v.revert && !v.unused}-1) # dont count reverts
+			colors.unshift 'white' # for the base revision
+			
+			color_for = Hash[ versions.map{|v|
+				[v.revid, (v.revert||v.unused) ? 'grey' : colors.shift ] # reverts are grey
+			} ]
+		end
+		
 		
 		legendhtml = 
 			"Legend (#{versions.length} revisions shown):<br>\n" +
 			versions.map{|v| 
-				"<span style='background:#{v.color}; color:#{foreground_for v.color}'>" + 
-					"#{html_escape_in_place v.user} at #{html_escape_in_place v.timestamp}, comment: #{html_escape_in_place v.comment} (#{v.color})" + 
+				"<span id='rev#{v.revid}-legend'>" + 
+					"#{html_escape_in_place v.user} at #{html_escape_in_place v.timestamp}, comment: #{html_escape_in_place v.comment} " + 
+					"(#{v.revert||v.unused ? 'a revert, a reverted edit, an edit that only removes text, or a log entry' : color_for[v.revid]})" +
 				"</span>"
 			}.join("<br>\n") # yay superfluous indentation!
 		
 		articlehtml = data.output_marks.join('')
 		
-		css = '' # TODO
+		css = color_for.each_pair.map{|revid, color|
+			".rev#{revid}, #rev#{revid}-legend { background:#{color_for[revid]}; color:#{foreground_for color_for[revid]} }"
+		}.join "\n"
 		
 		return [css, legendhtml, articlehtml]
 	end
@@ -331,7 +334,7 @@ def foreground_for color
 	$1.to_i<=35 ? 'white' : 'black'
 end
 
-Version = Struct.new :text, :user, :timestamp, :comment, :color, :revert, :revid
+Version = Struct.new :text, :user, :timestamp, :comment, :unused, :revert, :revid
 Mark = Struct.new :index, :color, :length, :i
 
 class Object
@@ -441,7 +444,7 @@ class PatchRecorder < Array
 			inserts[index]=[] unless inserts[index]
 			inserts[index+length]=[] unless inserts[index+length]
 			
-			inserts[index].push "<span style='background:#{color}; color:#{foreground_for color}'>"
+			inserts[index].push "<span class='rev#{color}'>"
 			inserts[index+length].unshift '</span>'
 		end
 		
