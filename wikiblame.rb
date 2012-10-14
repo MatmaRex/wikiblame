@@ -194,7 +194,8 @@ class WikiBlame
 				(r['comment'] || "<hidden>"),
 				nil,
 				nil,
-				r['revid']
+				r['revid'],
+				false
 			)
 		end
 		
@@ -228,16 +229,22 @@ class WikiBlame
 		
 		if @collapse
 			versions.each_cons 2 do |pv, nv|
-				if pv.user == nv.user and !pv.revert and !nv.revert # ignore reverts
-					pv.delete_me = true
-					nv.timestamp = [pv.timestamp, nv.timestamp].join(", ")
-					nv.comment = [pv.comment, nv.comment].join("; ")
-					# nv.revid = [pv.revid, nv.revid].flatten
-					nv.revid = pv.revid
+				if pv.user == nv.user
+					nv.collapsed = pv.collapsed || pv.revid
 				end
 			end
+		end
+		
+		if @colorusers
+			# each user has unique color
 			
-			versions.delete_if{|v| v.delete_me}
+			user_to_first_rev = Hash[ versions.select{|v| !v.revert && !v.unused}.uniq(&:user).map{|v| [v.user, v.revid] } ]
+			
+			versions.each do |v|
+				if user_to_first_rev[v.user] != v.revid
+					v.collapsed = user_to_first_rev[v.user]
+				end
+			end
 		end
 		
 		massage = lambda{|text|
@@ -285,41 +292,33 @@ class WikiBlame
 			v.unused = true
 		end
 		
-		color_for = {}
-		if @colorusers
-			# each user has unique color
-			userslist = versions.select{|v| !v.revert && !v.unused}.map{|v| v.user}.uniq
-			colors = get_colors userslist.length-1
-			colors.unshift 'white' # for the base revision
-			user_to_color = Hash[ userslist.zip(colors) ]
-			
-			color_for = Hash[ versions.map{|v|
-				[v.revid, (v.revert||v.unused) ? 'grey' : user_to_color[v.user] ] # reverts are grey
-			} ]
-		else
-			# each revision has unique color
-			colors = get_colors(versions.count{|v| !v.revert && !v.unused}-1) # dont count reverts
-			colors.unshift 'white' # for the base revision
-			
-			color_for = Hash[ versions.map{|v|
-				[v.revid, (v.revert||v.unused) ? 'grey' : colors.shift ] # reverts are grey
-			} ]
-		end
-		
-		
 		legendhtml = 
 			"Legend (#{versions.length} revisions shown):<br>\n" +
 			versions.map{|v| 
 				"<span id='rev#{v.revid}-legend'>" + 
-					"#{html_escape_in_place v.user} at #{html_escape_in_place v.timestamp}, comment: #{html_escape_in_place v.comment} " + 
-					"(#{v.revert||v.unused ? 'a revert, a reverted edit, an edit that only removes text, or a log entry' : color_for[v.revid]})" +
+					"#{html_escape_in_place v.user} at #{html_escape_in_place v.timestamp}, comment: #{html_escape_in_place v.comment}" + 
+					(v.revert||v.unused ? ' (a revert, a reverted edit, an edit that only removes text, or a log entry)' : '') +
+					" (r#{v.revid})" +
 				"</span>"
 			}.join("<br>\n") # yay superfluous indentation!
 		
 		articlehtml = data.output_marks.join('')
 		
-		css = color_for.each_pair.map{|revid, color|
-			".rev#{revid}, #rev#{revid}-legend { background:#{color_for[revid]}; color:#{foreground_for color_for[revid]} }"
+		colors = get_colors versions.count{|v| !v.revert and !v.unused and !v.collapsed }
+		style_for = {}
+		versions.each do |v|
+			if v.revert || v.unused
+				style_for[v.revid] = "font-style:italic"
+			elsif v.collapsed
+				style_for[v.revid] = style_for[v.collapsed]
+			else
+				color = colors.shift
+				style_for[v.revid] = "background:#{color}; color:#{foreground_for color}"
+			end
+		end
+		
+		css = style_for.map{|revid, style|
+			".rev#{revid}, #rev#{revid}-legend { #{style} }"
 		}.join "\n"
 		
 		return [css, legendhtml, articlehtml]
@@ -334,7 +333,8 @@ def foreground_for color
 	$1.to_i<=35 ? 'white' : 'black'
 end
 
-Version = Struct.new :text, :user, :timestamp, :comment, :unused, :revert, :revid
+Version = Struct.new :text, :user, :timestamp, :comment, :unused, :revert, :revid, :collapsed
+
 Mark = Struct.new :index, :color, :length, :i
 
 class Object
