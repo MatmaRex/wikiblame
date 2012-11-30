@@ -231,7 +231,7 @@ class WikiBlame
 		
 		if @collapse
 			versions.each_cons 2 do |pv, nv|
-				if pv.user == nv.user
+				if pv.user == nv.user and !pv.revert
 					nv.collapsed = pv.collapsed || pv.revid
 				end
 			end
