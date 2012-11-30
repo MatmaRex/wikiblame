@@ -240,7 +240,7 @@ class WikiBlame
 		if @colorusers
 			# each user has unique color
 			
-			user_to_first_rev = Hash[ versions.select{|v| !v.revert && !v.unused}.uniq(&:user).map{|v| [v.user, v.revid] } ]
+			user_to_first_rev = Hash[ versions.select{|v| !v.revert }.uniq(&:user).map{|v| [v.user, v.revid] } ]
 			
 			versions.each do |v|
 				if user_to_first_rev[v.user] != v.revid
@@ -275,17 +275,11 @@ class WikiBlame
 		
 		data = PatchRecorder.new massage.call(versions[0].text), versions[0].revid
 
-		(versions.length-1).times do |i|
-			next if versions[i].revert # don't start from reverts
-			
-			j = i+1
-			j += 1 until !versions[j] or !versions[j].revert # and don't finish at them
-			next if !versions[j] # latest revisions were reverts
-			
-			d = Diff::LCS.diff massage.call(versions[i].text), massage.call(versions[j].text)
-			data = data.patch d, versions[j].revid
-			
-			puts "#{i} / #{versions.length-1}: r#{versions[j].revid}, length=#{data.length}" if $VERBOSE
+		nonrev_count = versions.select{|v| !v.revert }.length
+		versions.select{|v| !v.revert }.each_cons(2).with_index do |(a, b), i|
+			d = Diff::LCS.diff massage.call(a.text), massage.call(b.text)
+			data = data.patch d, b.revid
+			puts "#{i} / #{nonrev_count}: r#{b.revid}, length=#{data.length}" if $VERBOSE
 		end
 		
 		data.normalize_marks!
