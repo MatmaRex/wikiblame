@@ -1,4 +1,5 @@
 camping
-sunflower >= 0.5.5
+sunflower --version >=0.5.5
 diff-lcs
+ZenTest --version 4.3.0
 RubyInline
