@@ -6,6 +6,7 @@
 require 'sunflower'
 require 'camping'
 require 'diff-lcs'
+require_relative 'cppalgorithm'
 
 require 'benchmark'
 
@@ -404,15 +405,18 @@ class PatchRecorder < Array
 			earlier, later = @marks[i], @marks[i+1]
 			# if earlier overlaps later, split it in two
 			if earlier.index+earlier.length > later.index
-				@marks[i, 2] = [
+				new_marks = [
 					Mark.new( earlier.index, earlier.color, later.index-earlier.index, earlier.i ),
 					later,
 					Mark.new( later.index+later.length, earlier.color, earlier.length-(later.length)-(later.index-earlier.index), earlier.i ),
 				]
 				
-				# we have to re-sort the entire thing from this point on... (tested)
-				@marks[i..-1] = @marks[i..-1].sort_by{|m| [m.index, -m.length] }
-				
+				# remove old and insert new in sorted order
+				@marks[i, 2] = []
+				new_marks.each do |mark|
+					idx = CppAlgorithm.lower_bound(@marks, mark){|a,b| [a.index, -a.length] <=> [b.index, -b.length] }
+					@marks[idx, 0] = [mark]
+				end
 			end
 			
 			i += 1

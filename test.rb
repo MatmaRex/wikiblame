@@ -8,6 +8,8 @@ articles = [
 	'Zaginiona flota',
 	'Automatyka domowa',
 	'Motorola DynaTAC',
+	'Samy Naceri',
+	'Erupcja wulkanu',
 ]
 
 unless File.directory? './test'
