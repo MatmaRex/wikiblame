@@ -1,5 +1,5 @@
 # coding: utf-8
-# WikiBlame v 0.3 by Matma Rex
+# WikiBlame v 0.4 by Matma Rex
 # matma.rex@gmail.com
 # released under CC-BY-SA 3.0
 
@@ -107,7 +107,7 @@ module WikiBlameCamping
 				
 				input type:'submit'
 				
-				p "WikiBlame v 0.3 by Matma Rex (matma.rex@gmail.com). Released under CC-BY-SA 3.0."
+				p "WikiBlame v 0.4 by Matma Rex (matma.rex@gmail.com). Released under CC-BY-SA 3.0."
 				p{
 					a 'Read the source and view the README on GitHub.', href: "https://github.com/MatmaRex/wikiblame"
 				}
