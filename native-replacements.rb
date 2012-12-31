@@ -1,4 +1,76 @@
 # coding: utf-8
+require 'inline'
+
+class PatchRecorder < Array
+	inline :C do |builder|
+		builder.add_compile_flags '-x c++', '-lstdc++'
+
+		builder.c %[
+			void nudge_marks_cpp(VALUE marks, VALUE length_, VALUE index_, VALUE type) {
+				int index = NUM2INT(index_);
+				int length = NUM2INT(length_);
+				
+				if(type == ID2SYM(rb_intern("-"))) {
+					for(int i=0; i<RARRAY_LEN(marks); i++) {
+						VALUE m = *( RARRAY_PTR(marks) + i );
+						int m_index = NUM2INT( RSTRUCT_PTR(m)[0] ); // index => 0th position in the Struct
+						int m_length = NUM2INT( RSTRUCT_PTR(m)[2] ); // length => 2nd position in the Struct
+						
+						if(m_index>=index) {
+							if(m_index>index+length) {
+								m_index-=length;
+							} else {
+								m_length-=index+length-m_index;
+								m_index=index;
+							}
+						} else {
+							if(m_index+m_length<=index) {
+								// do nothing
+							} else {
+								m_length-=length;
+							}
+						}
+						
+						RSTRUCT_PTR(m)[0] = INT2NUM(m_index); // index => 0th position in the Struct
+						RSTRUCT_PTR(m)[2] = INT2NUM(m_length); // length => 2nd position in the Struct
+					}
+				} else {
+					for(int i=0; i<RARRAY_LEN(marks); i++) {
+						VALUE m = *( RARRAY_PTR(marks) + i );
+						int m_index = NUM2INT( RSTRUCT_PTR(m)[0] ); // index => 0th position in the Struct
+						int m_length = NUM2INT( RSTRUCT_PTR(m)[2] ); // length => 2nd position in the Struct
+						
+						if(m_index>=index) {
+							if(m_index>index+length) {
+								m_index+=length;
+							} else {
+								m_index+=length;
+							}
+						} else {
+							if(m_index+m_length<=index) {
+								// do nothing
+							} else {
+								m_length+=length;
+							}
+						}
+						
+						RSTRUCT_PTR(m)[0] = INT2NUM(m_index); // index => 0th position in the Struct
+						RSTRUCT_PTR(m)[2] = INT2NUM(m_length); // length => 2nd position in the Struct
+					}
+				}
+			}
+		]
+	end
+	
+	def nudge_marks length, index, type
+		nudge_marks_cpp @marks, length, index, type
+		
+		@marks.delete_if{|m| m.length<1 or m.index<0}
+	end
+end
+
+
+
 require 'diff-lcs'
 
 # Monkey-patch Diff::LCS to use native C++ binary search instead of homemade Ruby solution.
