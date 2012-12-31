@@ -6,7 +6,9 @@ class PatchRecorder < Array
 		builder.add_compile_flags '-x c++', '-lstdc++'
 
 		builder.c %[
-			void nudge_marks_cpp(VALUE marks, VALUE length_, VALUE index_, VALUE type) {
+			void nudge_marks(VALUE length_, VALUE index_, VALUE type) {
+				VALUE marks = rb_iv_get(self, "@marks");
+			
 				int index = NUM2INT(index_);
 				int length = NUM2INT(length_);
 				
@@ -31,8 +33,14 @@ class PatchRecorder < Array
 							}
 						}
 						
-						RSTRUCT_PTR(m)[0] = INT2NUM(m_index); // index => 0th position in the Struct
-						RSTRUCT_PTR(m)[2] = INT2NUM(m_length); // length => 2nd position in the Struct
+						if(m_length<1 || m_index<0) {
+							// this mark has essentially disappeared
+							// replace with a nil to remove later with a #compact! call
+							*( RARRAY_PTR(marks) + i ) = Qnil;
+						} else {
+							RSTRUCT_PTR(m)[0] = INT2NUM(m_index); // index => 0th position in the Struct
+							RSTRUCT_PTR(m)[2] = INT2NUM(m_length); // length => 2nd position in the Struct
+						}
 					}
 				} else {
 					for(int i=0; i<RARRAY_LEN(marks); i++) {
@@ -54,18 +62,20 @@ class PatchRecorder < Array
 							}
 						}
 						
-						RSTRUCT_PTR(m)[0] = INT2NUM(m_index); // index => 0th position in the Struct
-						RSTRUCT_PTR(m)[2] = INT2NUM(m_length); // length => 2nd position in the Struct
+						if(m_length<1 || m_index<0) {
+							// this mark has essentially disappeared
+							// replace with a nil to remove later with a #compact! call
+							*( RARRAY_PTR(marks) + i ) = Qnil;
+						} else {
+							RSTRUCT_PTR(m)[0] = INT2NUM(m_index); // index => 0th position in the Struct
+							RSTRUCT_PTR(m)[2] = INT2NUM(m_length); // length => 2nd position in the Struct
+						}
 					}
 				}
+				
+				rb_funcall(marks, rb_intern("compact!"), 0);
 			}
 		]
-	end
-	
-	def nudge_marks length, index, type
-		nudge_marks_cpp @marks, length, index, type
-		
-		@marks.delete_if{|m| m.length<1 or m.index<0}
 	end
 end
 
