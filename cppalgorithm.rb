@@ -12,7 +12,7 @@ module CppAlgorithm
 		}
 		
 		int ruby_compare_lessthan_proc(VALUE a, VALUE b) {
-			return NUM2INT( rb_funcall(rb_block_proc(), rb_intern("call"), 2, a, b) ) < 0;
+			return NUM2INT( rb_yield_values(2, a, b) ) < 0;
 		}
 		'
 
