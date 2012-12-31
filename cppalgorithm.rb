@@ -4,27 +4,27 @@ require 'inline'
 module CppAlgorithm
 	inline :C do |builder|
 		builder.include '<algorithm>'
-		builder.add_compile_flags '-x c++', '-lstdc++', '-std=c++0x'
+		builder.add_compile_flags '-x c++', '-lstdc++'
+
+		builder.prefix '
+		int ruby_compare_lessthan(VALUE a, VALUE b) {
+			return NUM2INT( rb_funcall(a, rb_intern("<=>"), 1, b) ) < 0;
+		}
+		
+		int ruby_compare_lessthan_proc(VALUE a, VALUE b) {
+			return NUM2INT( rb_funcall(rb_block_proc(), rb_intern("call"), 2, a, b) ) < 0;
+		}
+		'
 
 		builder.c '
 		VALUE lower_bound(VALUE r_array, VALUE value) {
 			VALUE* array = RARRAY_PTR(r_array);
 			int len = RARRAY_LEN(r_array);
 			
-			VALUE* found;
-			
-			if(rb_block_given_p()) {
-				auto proc = rb_block_proc();
-				found = std::lower_bound(
-					array, array+len, value,
-					[proc](VALUE a, VALUE b) -> int { return NUM2INT( rb_funcall(proc, rb_intern("call"), 2, a, b) ) < 0; }
-				);
-			} else {
-				found = std::lower_bound(
-					array, array+len, value,
-					[](VALUE a, VALUE b) -> int { return NUM2INT( rb_funcall(a, rb_intern("<=>"), 1, b) ) < 0; }
-				);
-			}
+			VALUE* found = std::lower_bound(
+				array, array+len, value,
+				rb_block_given_p() ? ruby_compare_lessthan_proc : ruby_compare_lessthan
+			);
 			
 			return INT2NUM(found-array);
 		}'
@@ -34,20 +34,10 @@ module CppAlgorithm
 			VALUE* array = RARRAY_PTR(r_array);
 			int len = RARRAY_LEN(r_array);
 			
-			VALUE* found;
-			
-			if(rb_block_given_p()) {
-				auto proc = rb_block_proc();
-				found = std::upper_bound(
-					array, array+len, value,
-					[proc](VALUE a, VALUE b) -> int { return NUM2INT( rb_funcall(proc, rb_intern("call"), 2, a, b) ) < 0; }
-				);
-			} else {
-				found = std::upper_bound(
-					array, array+len, value,
-					[](VALUE a, VALUE b) -> int { return NUM2INT( rb_funcall(a, rb_intern("<=>"), 1, b) ) < 0; }
-				);
-			}
+			VALUE* found = std::upper_bound(
+				array, array+len, value,
+				rb_block_given_p() ? ruby_compare_lessthan_proc : ruby_compare_lessthan
+			);
 			
 			return INT2NUM(found-array);
 		}'
@@ -57,20 +47,10 @@ module CppAlgorithm
 			VALUE* array = RARRAY_PTR(r_array);
 			int len = RARRAY_LEN(r_array);
 			
-			int found;
-			
-			if(rb_block_given_p()) {
-				auto proc = rb_block_proc();
-				found = std::binary_search(
-					array, array+len, value,
-					[proc](VALUE a, VALUE b) -> int { return NUM2INT( rb_funcall(proc, rb_intern("call"), 2, a, b) ) < 0; }
-				);
-			} else {
-				found = std::binary_search(
-					array, array+len, value,
-					[](VALUE a, VALUE b) -> int { return NUM2INT( rb_funcall(a, rb_intern("<=>"), 1, b) ) < 0; }
-				);
-			}
+			int found = std::binary_search(
+				array, array+len, value,
+				rb_block_given_p() ? ruby_compare_lessthan_proc : ruby_compare_lessthan
+			);
 			
 			return found ? Qtrue : Qfalse;
 		}'
