@@ -20,21 +20,6 @@ module WikiBlameCamping
 			end
 		end
 		
-		class SourceX
-			def get file
-				@headers['content-type']='text/plain'
-				
-				case file
-				when 'README'
-					@source1 ||= File.read './README'
-				when 'wikiblame.rb'
-					@source2 ||= File.read './wikiblame.rb'
-				else
-					'Nope.'
-				end
-			end
-		end
-		
 		class Diff
 			def get
 				lang = (@request['lang'] and @request['lang']!='') ? @request['lang'] : 'pl'
@@ -121,12 +106,8 @@ module WikiBlameCamping
 				
 				p "WikiBlame v 0.3 by Matma Rex (matma.rex@gmail.com). Released under CC-BY-SA 3.0."
 				p{
-					a 'Read the source',      :href=>R(SourceX, 'wikiblame.rb')
-					text ", "
-					a 'view the README',    :href=>R(SourceX, 'README')
-					text "."
+					a 'Read the source and view the README on GitHub.', href: "https://github.com/MatmaRex/wikiblame"
 				}
-				p{a 'See me on Github!', :href=>'https://github.com/MatmaRex/wikiblame'}
 			end
 		end
 		
