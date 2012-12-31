@@ -10,6 +10,7 @@ articles = [
 	'Motorola DynaTAC',
 	'Samy Naceri',
 	'Erupcja wulkanu',
+	'Pantomogram',
 ]
 
 unless File.directory? './test'
