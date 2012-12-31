@@ -8,6 +8,8 @@ require 'camping'
 require 'diff-lcs'
 require_relative 'cppalgorithm'
 
+# We require_relative 'native-replacements' at the bottom to overwrite some methods defined here.
+
 require 'benchmark'
 
 Camping.goes :WikiBlameCamping
@@ -505,5 +507,4 @@ class PatchRecorder < Array
   end
 end
 
-
-
+require_relative 'native-replacements'
