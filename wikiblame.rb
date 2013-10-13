@@ -22,7 +22,7 @@ module WikiBlameCamping
 					@title = "Wiki blame"
 					render :index
 				else
-					lang = (@request['lang'] and @request['lang']!='') ? @request['lang'] : 'pl'
+					lang = (@request['lang'] and @request['lang']!='') ? @request['lang'] : 'w:pl'
 					article = (@request['article'] and @request['article']!='') ? @request['article'] : ''
 					reverts = (@request['reverts'] and @request['reverts']!='') ? true : false
 					collapse = (@request['collapse'] and @request['collapse']!='') ? true : false
@@ -83,7 +83,7 @@ module WikiBlameCamping
 		def index
 			form method:'get' do
 				ul do
-					li{ _input 'Wiki language code: ', :lang, 'pl' }
+					li{ _input 'Wiki identifier or domain: ', :lang, 'w:pl' }
 					li{ _input 'Article name: ', :article }
 				end
 				
@@ -163,7 +163,7 @@ class WikiBlame
 	end
 	
 	def blame
-		s = Sunflower.new @lang+'.wikipedia.org'
+		s = Sunflower.new @lang
 		s.warnings = false
 		s.log = false
 
