@@ -16,37 +16,34 @@ Camping.goes :WikiBlameCamping
 
 module WikiBlameCamping
 	module Controllers
-		class Index
+		class Index < R '/.*'
 			def get
-				@title = "Wiki blame"
-				render :index
-			end
-		end
-		
-		class Diff
-			def get
-				lang = (@request['lang'] and @request['lang']!='') ? @request['lang'] : 'pl'
-				article = (@request['article'] and @request['article']!='') ? @request['article'] : ''
-				reverts = (@request['reverts'] and @request['reverts']!='') ? true : false
-				collapse = (@request['collapse'] and @request['collapse']!='') ? true : false
-				revertshard = (@request['revertshard'] and @request['revertshard']!='') ? true : false
-				pilcrow = (@request['pilcrow'] and @request['pilcrow']!='') ? true : false
-				parsed = (@request['parsed'] and @request['parsed']!='') ? true : false
-				colorusers = (@request['colorusers'] and @request['colorusers']!='') ? true : false
-				granularity = (@request['granularity'] and @request['granularity']!='') ? @request['granularity'] : 'chars'
-				
-				blame = WikiBlame.new lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers, granularity
-				
-				
-				@parsed = parsed
-				@title = "#{article} - Wiki blame"
-				
-				@time = Benchmark.realtime {
-					@css, @legendhtml, @articlehtml = blame.blame
-				}
-				
-				
-				render :diff
+				if @request.params.length == 0
+					@title = "Wiki blame"
+					render :index
+				else
+					lang = (@request['lang'] and @request['lang']!='') ? @request['lang'] : 'pl'
+					article = (@request['article'] and @request['article']!='') ? @request['article'] : ''
+					reverts = (@request['reverts'] and @request['reverts']!='') ? true : false
+					collapse = (@request['collapse'] and @request['collapse']!='') ? true : false
+					revertshard = (@request['revertshard'] and @request['revertshard']!='') ? true : false
+					pilcrow = (@request['pilcrow'] and @request['pilcrow']!='') ? true : false
+					parsed = (@request['parsed'] and @request['parsed']!='') ? true : false
+					colorusers = (@request['colorusers'] and @request['colorusers']!='') ? true : false
+					granularity = (@request['granularity'] and @request['granularity']!='') ? @request['granularity'] : 'chars'
+					
+					blame = WikiBlame.new lang, article, reverts, collapse, revertshard, pilcrow, parsed, colorusers, granularity
+					
+					
+					@parsed = parsed
+					@title = "#{article} - Wiki blame"
+					
+					@time = Benchmark.realtime {
+						@css, @legendhtml, @articlehtml = blame.blame
+					}
+					
+					render :diff
+				end
 			end
 		end
 	end
@@ -84,7 +81,7 @@ module WikiBlameCamping
 		end
 		
 		def index
-			form action:'/diff', method:'get' do
+			form method:'get' do
 				ul do
 					li{ _input 'Wiki language code: ', :lang, 'pl' }
 					li{ _input 'Article name: ', :article }
